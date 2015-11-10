@@ -41,11 +41,12 @@ function _generatePjUrls(pageUrlArr, callback) {
                 projectUrlArr.push(pjUrlTpl.replace('{$id}', pjIds[i]));
             }*/
 
-            calbak(null, body);
+            calbak(null, "projectUrlArr");
         });
     }, function(err, results) {
         console.log('generatePjUrl err: ' + err);
-        console.log('generatePjUrl results: ' + results);
+        //console.log('generatePjUrl results: ' + results);
+        callback(null, results);
     });
 }
 
