@@ -61,7 +61,7 @@ function crawler() {
         }
 
         console.log('Reading page...');
-        async.mapLimit(pageUrlArr, 20, function(pageURL, callback) {
+        async.mapLimit(pageUrlArr, 30, function(pageURL, callback) {
             request(pageURL, function(err, res, body) {
 
                 var data = _parseData(body),
@@ -75,9 +75,9 @@ function crawler() {
                 callback(null);
             });
         }, function(err) {
-            console.log('generatePjUrl err: ' + err);
+            console.log('generate page urls err: ' + err);
 
-            async.mapLimit(pjUrlArr, 20, function(pjURL, callback) {
+            async.mapLimit(pjUrlArr, 30, function(pjURL, callback) {
                 request(pjURL, function(err, res, body) {
                     console.log('\n项目' + (pjIdx++));
                     var data = _parseData(body),
@@ -87,14 +87,14 @@ function crawler() {
                     callback(null, pjInfo);
                 });
             }, function(err, pjInfoArr) {
-                console.log('generatePjUrl err: ' + err);
+                console.log('saving err: ' + err);
 
                 pjInfoArr.splice(0, 0, headers);
                 common.writeToExcel(fileName, pjInfoArr);
 
                 console.log('Finished successfully!');
                 console.log('项目总数：' + pjInfoArr.length);
-                console.log('总耗时：' + ((Date.now() - startTime) / 1000));
+                console.log('总耗时：' + ((Date.now() - startTime) / 1000) + 'ms');
             });
         });
     });
