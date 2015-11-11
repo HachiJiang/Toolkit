@@ -1,69 +1,102 @@
 // 腾讯乐捐
 
-var http = require("http"),
-    request = require("request"),
+var request = require("request"),
     async = require("async"),
     common = require("./common");
 
-// global variables
-var pjUrlTpl = 'http://gongyi.qq.com/js/succor_data/pcdetail/pc.detail.{$id}.js';
-
 function _parseData(data) {
-    var params = data.substr(10, data.length - 12);
-    return JSON.parse(params);
+    var params = data.match(/(\{=?)([\s\S]*)(\})/);
+    //var params = data.substr(10, data.length - 12);
+    return JSON.parse(params[0]);
 }
 
-// 1. request initial data and generate page urls
-function _generatePageUrls(pageURLTpl, callback) {
+function _extractInfo(pj) {
+    var status = '';
+    switch (pj.status) {
+        case '1':
+            status = '募款中';
+            break;
+        case '2':
+            status = '执行中';
+            break;
+        case '3':
+            status = '已结束';
+            break;
+        default:
+            status = 'unknown';
+            break;
+    }
+
+    var donate = pj.donate,
+        result = [
+            pj.title,
+            status,
+            donate.needMoney + '元', donate.obtainMoney + '元',
+            pj.startTime + '至' + pj.endTime,
+            pj.fundName,
+            pj.fundPCnt
+        ];
+
+    return result;
+}
+
+function crawler() {
+    var pageURLTpl = 'http://npoapp.gongyi.qq.com/succorv2/unproject/getlist?g_tk=false&jsoncallback=_Callback&s_status=0&s_tid=&s_puin=&s_fid=&s_sort=&s_key=&p=',
+        pjUrlTpl = 'http://gongyi.qq.com/js/succor_data/pcdetail/pc.detail.{$id}.js',
+        headers = ['项目名称', '状态', '目标筹款额', '已筹', '时间', '发起公益机构', '公益机构乐捐项目数'],
+        pageUrlArr = [],
+        pjUrlArr = [],
+        pjIdx = 1,
+        startTime = Date.now(),
+        fileName = '腾讯乐捐';
+
     request(pageURLTpl, function(err, res, body) {
         var data = _parseData(body),
-            pageUrlArr = [],
             pageCount = data.info.pages.total_page;
+
+        console.log('页面总数: ' + pageCount);
 
         for (var i = pageCount; i > 0; i--) {
             pageUrlArr.push(pageURLTpl + i);
         }
-        callback(null, pageUrlArr);
-    });
-}
 
-// 2. generate project urls
-function _generatePjUrls(pageUrlArr, callback) {
-    async.map(pageUrlArr, function(pageURL, calbak) {
-        request(pageURL, function(err, res, body) {
-            /*var data = _parseData(body),
-                list = data.info,
-                projectUrlArr = [],
-                i, il, id;
+        console.log('Reading page...');
+        async.mapLimit(pageUrlArr, 20, function(pageURL, callback) {
+            request(pageURL, function(err, res, body) {
 
-            for (i = 0, il = list.length; i < il; i++) {
-                id = list[i].id;
-                projectUrlArr.push(pjUrlTpl.replace('{$id}', pjIds[i]));
-            }*/
+                var data = _parseData(body),
+                    list = data.info.list,
+                    i, il, id;
 
-            calbak(null, "projectUrlArr");
+                for (i = 0, il = list.length; i < il; i++) {
+                    pjUrlArr.push(pjUrlTpl.replace('{$id}', list[i].id));
+                }
+
+                callback(null);
+            });
+        }, function(err) {
+            console.log('generatePjUrl err: ' + err);
+
+            async.mapLimit(pjUrlArr, 20, function(pjURL, callback) {
+                request(pjURL, function(err, res, body) {
+                    console.log('\n项目' + (pjIdx++));
+                    var data = _parseData(body),
+                        pjInfo = _extractInfo(data.info.base);
+
+                    console.log(pjInfo);
+                    callback(null, pjInfo);
+                });
+            }, function(err, pjInfoArr) {
+                console.log('generatePjUrl err: ' + err);
+
+                pjInfoArr.splice(0, 0, headers);
+                common.writeToExcel(fileName, pjInfoArr);
+
+                console.log('Finished successfully!');
+                console.log('项目总数：' + pjInfoArr.length);
+                console.log('总耗时：' + ((Date.now() - startTime) / 1000));
+            });
         });
-    }, function(err, results) {
-        console.log('generatePjUrl err: ' + err);
-        //console.log('generatePjUrl results: ' + results);
-        callback(null, results);
-    });
-}
-
-// 3. 
-
-
-function crawler() {
-    // collect project info
-    var pageURLTpl = 'http://npoapp.gongyi.qq.com/succorv2/unproject/getlist?g_tk=false&jsoncallback=_Callback&s_status=&s_tid=&s_puin=&s_fid=&s_sort=&s_key=&p=',
-        rwData = async.compose(
-            _generatePageUrls,
-            _generatePjUrls
-        );
-
-    rwData(pageURLTpl, function(err, result) {
-        console.log('err: ', err);
-        console.log('result: ', result);
     });
 }
 
