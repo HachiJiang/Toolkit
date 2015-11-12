@@ -94,7 +94,7 @@ function crawler() {
 
                 console.log('Finished successfully!');
                 console.log('项目总数：' + pjInfoArr.length);
-                console.log('总耗时：' + ((Date.now() - startTime) / 1000) + 'ms');
+                console.log('总耗时：' + ((Date.now() - startTime) / 1000) + 's');
             });
         });
     });
