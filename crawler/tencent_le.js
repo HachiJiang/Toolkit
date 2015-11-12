@@ -4,9 +4,23 @@ var request = require("request"),
     async = require("async"),
     common = require("./common");
 
+var pjUrlTpl = 'http://gongyi.qq.com/js/succor_data/pcdetail/pc.detail.{$id}.js',
+    headers = ['项目名称', '状态', '目标筹款额', '已筹', '时间', '发起公益机构', '公益机构乐捐项目数'],
+    pageUrlArr = [],
+    pjUrlArr = [],
+    pjInfoArr = [headers],
+    pjIdx = 1,
+    fileName = '腾讯乐捐',
+    startTime;
+
 function _parseData(data) {
-    var params = data.match(/(\{=?)([\s\S]*)(\})/);
-    //var params = data.substr(10, data.length - 12);
+    var params = '';
+    try {
+        params = data.match(/(\{=?)([\s\S]*)(\})/);
+    } catch (e) {
+        console.log(body);
+        console.log('request page err: ' + e);
+    }
     return JSON.parse(params[0]);
 }
 
@@ -40,16 +54,7 @@ function _extractInfo(pj) {
     return result;
 }
 
-function crawler() {
-    var pageURLTpl = 'http://npoapp.gongyi.qq.com/succorv2/unproject/getlist?g_tk=false&jsoncallback=_Callback&s_status=0&s_tid=&s_puin=&s_fid=&s_sort=&s_key=&p=',
-        pjUrlTpl = 'http://gongyi.qq.com/js/succor_data/pcdetail/pc.detail.{$id}.js',
-        headers = ['项目名称', '状态', '目标筹款额', '已筹', '时间', '发起公益机构', '公益机构乐捐项目数'],
-        pageUrlArr = [],
-        pjUrlArr = [],
-        pjIdx = 1,
-        startTime = Date.now(),
-        fileName = '腾讯乐捐';
-
+function rwData(pageURLTpl) {
     request(pageURLTpl, function(err, res, body) {
         var data = _parseData(body),
             pageCount = data.info.pages.total_page;
@@ -63,7 +68,6 @@ function crawler() {
         console.log('Reading page...');
         async.mapLimit(pageUrlArr, 30, function(pageURL, callback) {
             request(pageURL, function(err, res, body) {
-
                 var data = _parseData(body),
                     list = data.info.list,
                     i, il, id;
@@ -84,12 +88,11 @@ function crawler() {
                         pjInfo = _extractInfo(data.info.base);
 
                     console.log(pjInfo);
-                    callback(null, pjInfo);
+                    pjInfoArr.push(pjInfo);
+                    callback(null);
                 });
-            }, function(err, pjInfoArr) {
+            }, function(err) {
                 console.log('saving err: ' + err);
-
-                pjInfoArr.splice(0, 0, headers);
                 common.writeToExcel(fileName, pjInfoArr);
 
                 console.log('Finished successfully!');
@@ -97,6 +100,23 @@ function crawler() {
                 console.log('总耗时：' + ((Date.now() - startTime) / 1000) + 's');
             });
         });
+    });
+}
+
+function crawler() {
+    var pageURLTplArr = [
+        'http://npoapp.gongyi.qq.com/succorv2/unproject/getlist?g_tk=false&jsoncallback=_Callback&s_status=0&s_tid=&s_puin=&s_fid=&s_sort=&s_key=&p=',
+        //'http://npoapp.gongyi.qq.com/succorv2/unproject/getlist?g_tk=false&jsoncallback=_Callback&s_status=1&s_tid=&s_puin=&s_fid=&s_sort=&s_key=&p=',
+        //'http://npoapp.gongyi.qq.com/succorv2/unproject/getlist?g_tk=false&jsoncallback=_Callback&s_status=2&s_tid=&s_puin=&s_fid=&s_sort=&s_key=&p=',
+        //'http://npoapp.gongyi.qq.com/succorv2/unproject/getlist?g_tk=false&jsoncallback=_Callback&s_status=3&s_tid=&s_puin=&s_fid=&s_sort=&s_key=&p='
+    ];
+
+    startTime = Date.now();
+    async.map(pageURLTplArr, function(pageURLTpl, callback) {
+        rwData(pageURLTpl);
+        callback(null);
+    }, function(err) {
+        console.log(err);
     });
 }
 
