@@ -18,8 +18,7 @@ function _parseData(data) {
     try {
         params = data.match(/(\{=?)([\s\S]*)(\})/);
     } catch (e) {
-        console.log(body);
-        console.log('request page err: ' + e);
+        console.log('_parseData err: ' + e);
     }
     return JSON.parse(params[0]);
 }
@@ -83,12 +82,14 @@ function rwData(pageURLTpl) {
 
             async.mapLimit(pjUrlArr, 30, function(pjURL, callback) {
                 request(pjURL, function(err, res, body) {
-                    console.log('\n项目' + (pjIdx++));
-                    var data = _parseData(body),
-                        pjInfo = _extractInfo(data.info.base);
+                    if (body) {
+                        console.log('\n项目' + (pjIdx++));
+                        var data = _parseData(body),
+                            pjInfo = _extractInfo(data.info.base);
 
-                    console.log(pjInfo);
-                    pjInfoArr.push(pjInfo);
+                        console.log(pjInfo);
+                        pjInfoArr.push(pjInfo);
+                    }
                     callback(null);
                 });
             }, function(err) {
