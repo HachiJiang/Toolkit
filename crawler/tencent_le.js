@@ -112,7 +112,7 @@ function rwData(pageURLTpl, calbak) {
                     console.log('\n项目' + (pjIdx++));
                     var data = _parseData(body),
                         pjInfo;
-                        
+
                     if (data && data.info && data.info.base) {
                         pjInfo = _extractInfo(data.info.base);
                         console.log(pjInfo);
@@ -150,7 +150,7 @@ function crawler() {
     ];
 
     startTime = Date.now();
-    async.eachLimit(pageURLTplArr, 2, function(pageURLTpl, calbak) {
+    async.eachLimit(pageURLTplArr, map_limit, function(pageURLTpl, calbak) {
         rwData(pageURLTpl, calbak);
     }, function(err, results) {
         if (err) {
